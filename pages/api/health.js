@@ -16,6 +16,7 @@ export default async function handler(req, res) {
         hasRealNewlines: key.includes('\n'),
         hasBeginHeader: key.includes('BEGIN PRIVATE KEY'),
       },
+      GOOGLE_PRIVATE_KEY_BASE64: !!process.env.GOOGLE_PRIVATE_KEY_BASE64,
       SESSION_SECRET: !!process.env.SESSION_SECRET,
       DISCORD_CLIENT_ID: !!process.env.DISCORD_CLIENT_ID,
       DISCORD_CLIENT_SECRET: !!process.env.DISCORD_CLIENT_SECRET,
