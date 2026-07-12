@@ -1,8 +1,89 @@
 import Layout from '../../components/Layout'
 import ClassIcon from '../../components/ClassIcon'
 import { getSession } from '../../lib/auth'
-import { getLeaderboard, getAttendance } from '../../lib/sheets'
+import { getLeaderboard, getAttendance, getMemberHistory } from '../../lib/sheets'
 import { theme } from '../../lib/styles'
+
+// All chartable stats (matches the profile stat cards) + CP.
+const GRAPH_STATS = [
+  { key: 'cp',          label: 'Combat Power', color: '#f5c518' },
+  { key: 'patk',        label: 'PATK',         color: '#7f77dd' },
+  { key: 'matk',        label: 'MATK',         color: '#5dcaa5' },
+  { key: 'pdef',        label: 'E.PDEF',       color: '#d85a30' },
+  { key: 'mdef',        label: 'E.MDEF',       color: '#d4537e' },
+  { key: 'pdmg',        label: 'PDMG',         color: '#eda100' },
+  { key: 'mdmg',        label: 'MDMG',         color: '#378add' },
+  { key: 'pdmgR',       label: 'PDMG.R',       color: '#639922' },
+  { key: 'mdmgR',       label: 'MDMG.R',       color: '#e24b4a' },
+  { key: 'ignorePdef',  label: 'Ignore PDEF',  color: '#9b59b6' },
+  { key: 'ignoreMdef',  label: 'Ignore MDEF',  color: '#3498db' },
+  { key: 'pvpDmg',      label: 'PVP DMG',      color: '#e67e22' },
+  { key: 'pvpReduction',label: 'PVP Reduction',color: '#1abc9c' },
+  { key: 'hp',          label: 'HP',           color: '#f87171' },
+]
+
+function fmt(n) {
+  if (n === Math.round(n)) return Math.round(n).toLocaleString()
+  return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+// Small inline SVG line chart with area fill and latest-value / delta annotation.
+function StatChart({ history, statKey, label, color }) {
+  const vals = history.map(h => h[statKey])
+  const hasData = vals.filter(v => v > 0).length >= 2
+  const W = 260, H = 84, pad = 8
+
+  let body
+  if (!hasData) {
+    body = <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.textM, fontSize: 11 }}>Not enough data</div>
+  } else {
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const range = max - min || 1
+    const stepX = vals.length > 1 ? (W - pad * 2) / (vals.length - 1) : 0
+    const pts = vals.map((v, i) => [pad + i * stepX, H - pad - ((v - min) / range) * (H - pad * 2)])
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')
+    const area = `M ${pts[0][0].toFixed(1)} ${H - pad} ` +
+      pts.map(p => 'L ' + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') +
+      ` L ${pts[pts.length - 1][0].toFixed(1)} ${H - pad} Z`
+    const gid = `grad-${statKey}`
+    body = (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="none" style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#${gid})`} />
+        <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {pts.map((p, i) => (
+          <circle key={i} cx={p[0]} cy={p[1]} r={i === pts.length - 1 ? 3 : 1.6} fill={color} />
+        ))}
+      </svg>
+    )
+  }
+
+  const first = vals.find(v => v > 0) || 0
+  const last = [...vals].reverse().find(v => v > 0) || 0
+  const delta = last - first
+  const deltaColor = delta > 0 ? '#4ade80' : delta < 0 ? '#f87171' : theme.textM
+
+  return (
+    <div className="chart-box">
+      <div className="chart-head">
+        <span className="chart-label">{label}</span>
+        {hasData && (
+          <span className="chart-delta" style={{ color: deltaColor }}>
+            {delta > 0 ? '▲ +' : delta < 0 ? '▼ ' : ''}{delta !== 0 ? fmt(delta) : '—'}
+          </span>
+        )}
+      </div>
+      <div className="chart-value" style={{ color }}>{fmt(last)}</div>
+      {body}
+    </div>
+  )
+}
 
 const STAT_GROUPS = [
   {
@@ -34,7 +115,7 @@ const STAT_GROUPS = [
   },
 ]
 
-export default function MemberProfile({ user, member, attendanceCount, totalEvents, recentAttendance }) {
+export default function MemberProfile({ user, member, attendanceCount, totalEvents, recentAttendance, history }) {
   if (!member) return (
     <Layout user={user}>
       <p style={{ color: theme.textM, padding: 40, textAlign: 'center' }}>Member not found.</p>
@@ -68,6 +149,15 @@ export default function MemberProfile({ user, member, attendanceCount, totalEven
         tr:last-child td { border-bottom: none; }
         .att-badge { background: #0a201020; color: #4ade80; font-size: 10px; padding: 1px 6px; border-radius: 3px; }
         .hp-box { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-left: 2px solid #e24b4a; border-radius: 8px; padding: 10px 12px; }
+        .chart-grid { display: grid; grid-template-columns: repeat(1,1fr); gap: 8px; }
+        @media(min-width:600px) { .chart-grid { grid-template-columns: repeat(2,1fr); } }
+        @media(min-width:900px) { .chart-grid { grid-template-columns: repeat(3,1fr); } }
+        .chart-box { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-radius: 8px; padding: 10px 12px; }
+        .chart-head { display: flex; justify-content: space-between; align-items: baseline; }
+        .chart-label { font-size: 11px; color: ${theme.textM}; }
+        .chart-delta { font-size: 10px; font-weight: 500; }
+        .chart-value { font-size: 16px; font-weight: 500; margin: 2px 0 6px; }
+        .growth-note { font-size: 11px; color: ${theme.textM}; padding: 20px; text-align: center; background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-radius: 10px; }
       `}</style>
 
       <a href="/" className="back">← Back to leaderboard</a>
@@ -120,6 +210,21 @@ export default function MemberProfile({ user, member, attendanceCount, totalEven
       )}
 
       <div className="stat-section">
+        <div className="section-label">Stat growth</div>
+        {history && history.length >= 2 ? (
+          <div className="chart-grid">
+            {GRAPH_STATS.map(s => (
+              <StatChart key={s.key} history={history} statKey={s.key} label={s.label} color={s.color} />
+            ))}
+          </div>
+        ) : (
+          <div className="growth-note">
+            Not enough history yet — growth charts appear after 2+ stat updates via <code>/updatestats</code>.
+          </div>
+        )}
+      </div>
+
+      <div className="stat-section">
         <div className="section-label">Attendance</div>
         <div className="att-card">
           <div className="att-header">
@@ -166,8 +271,10 @@ export async function getServerSideProps({ req, res, params }) {
   let attendanceCount = 0
   let totalEvents = 0
   let recentAttendance = []
+  let history = []
 
   if (member) {
+    history = await getMemberHistory(params.id)
     const memberAtt = attRows.filter(r => r['User ID'] === params.id)
     recentAttendance = memberAtt
       .sort((a, b) => new Date(b['Timestamp']) - new Date(a['Timestamp']))
@@ -188,6 +295,7 @@ export async function getServerSideProps({ req, res, params }) {
       attendanceCount,
       totalEvents,
       recentAttendance,
+      history,
     }
   }
 }
