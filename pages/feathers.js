@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import Layout from '../components/Layout'
 import { getSession } from '../lib/auth'
-import { getDistributions } from '../lib/sheets'
+import { getFeatherBidders } from '../lib/sheets'
 import { theme } from '../lib/styles'
 
 const SLOTS_PER_PAGE = 4
@@ -9,28 +9,16 @@ const SLOTS_PER_PAGE = 4
 // Icon image files live in public/icons/.
 const ICON = { LND: '/icons/lnd.png', TNS: '/icons/tns.png' }
 
-// Build the flat slot sequence: LND first (each player maximized to limitLnd),
-// then TNS starting from queue position 1 again (each maximized to limitTns).
-function buildSlots(queue, lnd, tns, limitLnd, limitTns) {
+// Build the flat slot sequence from per-bidder counts:
+// all LND slots first (each bidder maximized, in order), then all TNS slots.
+function buildSlots(bidders) {
   const slots = []
-  if (!queue.length) return slots
-
-  const fillPhase = (total, limit, type) => {
-    let filled = 0
-    let qi = 0
-    while (filled < total && limit > 0) {
-      const player = queue[qi % queue.length]
-      const take = Math.min(limit, total - filled)
-      for (let k = 0; k < take; k++) {
-        slots.push({ player, type })
-        filled++
-      }
-      qi++
-    }
-  }
-
-  fillPhase(lnd, limitLnd, 'LND')
-  fillPhase(tns, limitTns, 'TNS')
+  bidders.forEach(b => {
+    for (let i = 0; i < b.lnd; i++) slots.push({ player: b.name, type: 'LND' })
+  })
+  bidders.forEach(b => {
+    for (let i = 0; i < b.tns; i++) slots.push({ player: b.name, type: 'TNS' })
+  })
   return slots
 }
 
@@ -42,14 +30,13 @@ function chunkPages(slots) {
   return pages
 }
 
-export default function Feathers({ user, distribution, lastUpdated }) {
-  const slots = useMemo(() => {
-    if (!distribution) return []
-    const { lnd, tns, limitLnd, limitTns, queue } = distribution
-    return buildSlots(queue, lnd, tns, limitLnd, limitTns)
-  }, [distribution])
-
+export default function Feathers({ user, bidders, lastUpdated }) {
+  const slots = useMemo(() => buildSlots(bidders), [bidders])
   const pages = useMemo(() => chunkPages(slots), [slots])
+
+  const lndCount = slots.filter(s => s.type === 'LND').length
+  const tnsCount = slots.filter(s => s.type === 'TNS').length
+  const active = slots.length > 0
 
   return (
     <Layout user={user}>
@@ -58,8 +45,6 @@ export default function Feathers({ user, distribution, lastUpdated }) {
         .page-sub { font-size: 12px; color: ${theme.textM}; margin-bottom: 16px; }
         .summary { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-left: 2px solid ${theme.orange}; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: ${theme.textB}; margin-bottom: 8px; }
         .summary b { color: ${theme.textH}; font-weight: 500; }
-        .meta { font-size: 11px; color: ${theme.textM}; margin-bottom: 14px; }
-        .meta .tag { color: ${theme.gold}; font-weight: 500; }
         .rule { font-size: 11px; color: ${theme.textM}; margin-bottom: 14px; }
         .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 11px; color: ${theme.textM}; align-items: center; }
         .leg-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
@@ -78,29 +63,25 @@ export default function Feathers({ user, distribution, lastUpdated }) {
         .foot { font-size: 10px; color: ${theme.textM}; padding: 8px 12px; border-top: 0.5px solid ${theme.border}; }
         .empty { text-align: center; padding: 48px 24px; color: ${theme.textM}; font-size: 13px; }
         .empty b { color: ${theme.textB}; display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+        .empty code { background: ${theme.bgSurf}; padding: 1px 6px; border-radius: 3px; color: ${theme.textB}; }
       `}</style>
 
       <h1 className="page-title">Feather distribution</h1>
       <p className="page-sub">Combined LND + TNS slot allocation</p>
 
-      {!distribution ? (
+      {!active ? (
         <div className="table-card">
           <div className="empty">
             <b>No active distribution</b>
-            Run <code>/confirmdistribution</code> in Discord to publish one — the slot table will appear here.
+            Add bidders to the <code>FeatherDistribution</code> tab in the Google Sheet (columns: Bidder, LND, TNS) and the slot table will appear here.
           </div>
         </div>
       ) : (
         <>
           <div className="summary">
-            <b>{distribution.lndCount} LND</b> (limit {distribution.limitLnd} each) + <b>{distribution.tnsCount} TNS</b> (limit {distribution.limitTns} each) = <b>{slots.length} slots</b> total → <b>{pages.length} pages</b>
+            <b>{lndCount} LND</b> + <b>{tnsCount} TNS</b> = <b>{slots.length} slots</b> total → <b>{pages.length} pages</b> · {bidders.length} bidders
           </div>
-          <p className="meta">
-            <span className="tag">{distribution.type}</span>
-            {distribution.event ? ` · Event ${distribution.event}` : ''}
-            {distribution.timestamp ? ` · ${distribution.timestamp}` : ''}
-          </p>
-          <p className="rule">Each player gets exactly their limit — no more, no less. LND fills first, TNS continues after.</p>
+          <p className="rule">Each bidder gets exactly their listed slots. LND fills first, TNS continues after.</p>
 
           <div className="legend">
             <span><img className="leg-icon" src={ICON.LND} alt="" /> Light and Dark (LND)</span>
@@ -136,7 +117,7 @@ export default function Feathers({ user, distribution, lastUpdated }) {
                 </tbody>
               </table>
             </div>
-            <div className="foot">{distribution.queue.length} bidders · Last updated: {lastUpdated}</div>
+            <div className="foot">Last updated: {lastUpdated}</div>
           </div>
         </>
       )}
@@ -144,60 +125,34 @@ export default function Feathers({ user, distribution, lastUpdated }) {
   )
 }
 
-// Parse the confirmed Feathers row from the Distributions tab into grid inputs.
-// Items column looks like: "30 LND (limit 3), 20 TNS (limit 2)"
-// Recipients column is the ranked bidder list, e.g. "🛡️ Admin Fee, Bananaa, aremes, ..."
-function parseDistribution(row) {
-  const items = row.items || ''
-  const lndMatch = items.match(/(\d+)\s*LND\s*\(\s*limit\s*(\d+)\s*\)/i)
-  const tnsMatch = items.match(/(\d+)\s*TNS\s*\(\s*limit\s*(\d+)\s*\)/i)
-  if (!lndMatch && !tnsMatch) return null
+// Parse the FeatherDistribution tab rows into { name, lnd, tns }, ranked order preserved.
+function parseBidders(rows) {
+  if (!rows.length) return []
+  const headers = Object.keys(rows[0])
+  const nameKey = headers.find(h => /bidder|name|player|ign|member|user/i.test(h)) || headers[0]
+  const lndKey = headers.find(h => /lnd/i.test(h))
+  const tnsKey = headers.find(h => /tns/i.test(h))
 
-  const lnd = lndMatch ? parseInt(lndMatch[1], 10) : 0
-  const limitLnd = lndMatch ? parseInt(lndMatch[2], 10) : 1
-  const tns = tnsMatch ? parseInt(tnsMatch[1], 10) : 0
-  const limitTns = tnsMatch ? parseInt(tnsMatch[2], 10) : 1
-
-  // Ranked bidder queue, excluding the deactivated admin slot.
-  const queue = String(row.recipients || '')
-    .split(',')
-    .map(r => r.trim())
-    .filter(r => r && !/admin/i.test(r))
-
-  const slots = buildSlots(queue, lnd, tns, limitLnd, limitTns)
-  return {
-    lnd, tns, limitLnd, limitTns, queue,
-    lndCount: slots.filter(s => s.type === 'LND').length,
-    tnsCount: slots.filter(s => s.type === 'TNS').length,
-    type: row.type || 'Feathers',
-    event: row.event || '',
-    timestamp: row.timestamp || '',
-  }
+  return rows
+    .map(r => ({
+      name: String(r[nameKey] || '').trim(),
+      lnd: parseInt(r[lndKey], 10) || 0,
+      tns: parseInt(r[tnsKey], 10) || 0,
+    }))
+    .filter(b => b.name && !/admin/i.test(b.name) && (b.lnd > 0 || b.tns > 0))
 }
 
 export async function getServerSideProps({ req, res }) {
   const session = await getSession(req, res)
   if (!session.user) return { redirect: { destination: '/login', permanent: false } }
 
-  const rows = await getDistributions()
-  // Most recent confirmed Feathers distribution (rows are chronological).
-  const featherRow = [...rows].reverse().find(r => /feather/i.test(r['Type'] || ''))
-
-  let distribution = null
-  if (featherRow) {
-    distribution = parseDistribution({
-      type: featherRow['Type'],
-      event: featherRow['Event'],
-      recipients: featherRow['Recipients'],
-      items: featherRow['Items'],
-      timestamp: featherRow['Timestamp'],
-    })
-  }
+  const rows = await getFeatherBidders()
+  const bidders = parseBidders(rows)
 
   return {
     props: {
       user: session.user,
-      distribution,
+      bidders,
       lastUpdated: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
     },
   }
