@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
 import Layout from '../components/Layout'
 import ClassIcon from '../components/ClassIcon'
+import FeatherDistribution from '../components/FeatherDistribution'
 import { getSession } from '../lib/auth'
-import { getLeaderboard } from '../lib/sheets'
+import { getLeaderboard, getFeatherBidders } from '../lib/sheets'
 import { theme } from '../lib/styles'
 
 const STATS = [
@@ -33,7 +34,7 @@ function timeAgo(dateStr) {
   return `${days} days ago`
 }
 
-export default function Leaderboard({ members, user, lastUpdated }) {
+export default function Leaderboard({ members, user, lastUpdated, bidders }) {
   const [activeStat, setActiveStat] = useState('cp')
   const [search, setSearch] = useState('')
 
@@ -82,6 +83,8 @@ export default function Leaderboard({ members, user, lastUpdated }) {
         .rank-bronze { color: #cd7f32; font-weight: 500; }
         .rank-num { color: ${theme.textM}; }
       `}</style>
+
+      <FeatherDistribution bidders={bidders} emptyText="No current active bidding" />
 
       <h1 className="page-title">Leaderboard</h1>
       <p className="page-sub">Power stats rankings — all members</p>
@@ -176,11 +179,12 @@ export async function getServerSideProps({ req, res }) {
   const session = await getSession(req, res)
   if (!session.user) return { redirect: { destination: '/login', permanent: false } }
 
-  const members = await getLeaderboard()
+  const [members, bidders] = await Promise.all([getLeaderboard(), getFeatherBidders()])
   return {
     props: {
       user: session.user,
       members,
+      bidders,
       lastUpdated: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
     }
   }
