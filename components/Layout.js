@@ -4,11 +4,10 @@ import Image from 'next/image'
 import { theme, globalStyles } from '../lib/styles'
 
 const NAV_LINKS = [
-  { href: '/',             label: 'Leaderboard' },
-  { href: '/rankings',     label: 'Rankings'    },
+  { href: '/',             label: 'Dashboard'   },
+  { href: '/rankings',     label: 'Stats'       },
   { href: '/attendance',   label: 'Attendance'  },
   { href: '/distributions',label: 'Distributions'},
-  { href: '/feathers',     label: 'Feathers'    },
   { href: '/cardqueue',    label: 'Card Queue'  },
 ]
 
