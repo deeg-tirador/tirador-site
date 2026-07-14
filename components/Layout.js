@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: '/rankings',     label: 'Stats'       },
   { href: '/attendance',   label: 'Attendance'  },
   { href: '/distributions',label: 'Distributions'},
+  { href: '/feathers',     label: 'Feathers'    },
   { href: '/cardqueue',    label: 'Card Queue'  },
 ]
 
