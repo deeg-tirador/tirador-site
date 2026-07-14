@@ -5,6 +5,7 @@ import { theme, globalStyles } from '../lib/styles'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Leaderboard' },
+  { href: '/rankings',     label: 'Rankings'    },
   { href: '/attendance',   label: 'Attendance'  },
   { href: '/distributions',label: 'Distributions'},
   { href: '/feathers',     label: 'Feathers'    },
