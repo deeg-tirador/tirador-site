@@ -1,6 +1,13 @@
 import { useMemo } from 'react'
 import ClassIcon from './ClassIcon'
+import PieChart from './PieChart'
 import { theme } from '../lib/styles'
+
+// Palette cycled for the job breakdown slices.
+const JOB_COLORS = [
+  '#f5c518', '#7f77dd', '#5dcaa5', '#d85a30', '#d4537e', '#eda100', '#378add',
+  '#639922', '#e24b4a', '#9b59b6', '#3498db', '#e67e22', '#1abc9c', '#e84393',
+]
 
 const GUILD_CAP = 80
 
@@ -46,8 +53,15 @@ export default function Dashboard({ members, cpGains = [] }) {
 
     const roleCounts = { Support: 0, 'PATK Class': 0, 'MATK Class': 0, Other: 0 }
     members.forEach(m => { roleCounts[roleOf(m.class)]++ })
+    const roleData = [
+      { label: 'Support', value: roleCounts['Support'], color: '#5dcaa5' },
+      { label: 'PATK Class', value: roleCounts['PATK Class'], color: '#e67e22' },
+      { label: 'MATK Class', value: roleCounts['MATK Class'], color: '#378add' },
+      { label: 'Other', value: roleCounts['Other'], color: '#8a8a99' },
+    ]
+    const jobData = jobs.map(([label, value], i) => ({ label, value, color: JOB_COLORS[i % JOB_COLORS.length] }))
 
-    return { total, topCp, avgCp, updatedThisWeek, top3, jobs, maxJob, roleCounts }
+    return { total, topCp, avgCp, updatedThisWeek, top3, jobs, maxJob, roleData, jobData }
   }, [members])
 
   const classByUid = useMemo(() => {
@@ -163,19 +177,7 @@ export default function Dashboard({ members, cpGains = [] }) {
       <div className="cols">
         <div className="panel">
           <div className="panel-h">Role breakdown</div>
-          {['Support', 'PATK Class', 'MATK Class', 'Other'].map(label => {
-            const count = stats.roleCounts[label] || 0
-            const pct = stats.total ? (count / stats.total) * 100 : 0
-            const color = label === 'Other' ? theme.textM : roleColor(label)
-            return (
-              <div key={label} className="role-row">
-                <span className="role-dot" style={{ background: color }} />
-                <span className="role-name">{label}</span>
-                <span className="role-bar-track"><span className="role-bar" style={{ width: `${pct}%`, background: color }} /></span>
-                <span className="role-count">{count}</span>
-              </div>
-            )
-          })}
+          <PieChart data={stats.roleData} centerLabel="members" />
         </div>
 
         <div className="panel">
@@ -204,13 +206,7 @@ export default function Dashboard({ members, cpGains = [] }) {
       {/* Job breakdown */}
       <div className="job-panel">
         <div className="panel-h">Job breakdown</div>
-        {stats.jobs.map(([name, count]) => (
-          <div key={name} className="job-row">
-            <span className="job-name">{name}</span>
-            <span className="job-bar-track"><span className="job-bar" style={{ width: `${(count / stats.maxJob) * 100}%` }} /></span>
-            <span className="job-count">{count}</span>
-          </div>
-        ))}
+        <PieChart data={stats.jobData} centerLabel="members" size={170} />
       </div>
     </div>
   )

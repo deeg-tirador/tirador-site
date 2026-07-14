@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router'
+import { useEffect, useState } from 'react'
 import Head from 'next/head'
 import Image from 'next/image'
 import { theme, globalStyles } from '../lib/styles'
@@ -14,6 +15,16 @@ const NAV_LINKS = [
 
 export default function Layout({ children, user }) {
   const router = useRouter()
+  const [bidding, setBidding] = useState(null) // null = loading, true/false = known
+
+  useEffect(() => {
+    let alive = true
+    fetch('/api/bidding-status')
+      .then(r => r.json())
+      .then(d => { if (alive) setBidding(!!d.active) })
+      .catch(() => { if (alive) setBidding(false) })
+    return () => { alive = false }
+  }, [router.asPath])
 
   return (
     <>
@@ -89,6 +100,24 @@ export default function Layout({ children, user }) {
           align-items: center;
           gap: 8px;
         }
+        .bid-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          padding: 4px 10px;
+          border-radius: 20px;
+          border: 0.5px solid ${theme.border};
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .bid-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .bid-on { color: #4ade80; background: #0a2010; border-color: #1a402040; }
+        .bid-on .bid-dot { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+        .bid-off { color: #f87171; background: #200a0a; border-color: #40201a40; }
+        .bid-off .bid-dot { background: #f87171; }
+        @media (max-width: 480px) { .bid-text { display: none; } }
         .nav-avatar {
           width: 28px;
           height: 28px;
@@ -143,6 +172,12 @@ export default function Layout({ children, user }) {
         </div>
 
         <div className="nav-user">
+          {bidding !== null && (
+            <a href="/feathers" className={`bid-pill ${bidding ? 'bid-on' : 'bid-off'}`} title={bidding ? 'Active bidding' : 'No active bidding'}>
+              <span className="bid-dot" />
+              <span className="bid-text">{bidding ? 'Bidding open' : 'No bidding'}</span>
+            </a>
+          )}
           {user?.avatar ? (
             <div className="nav-avatar">
               <Image
