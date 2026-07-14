@@ -41,8 +41,9 @@ export default function FeatherDistribution({ bidders = [], emptyText = 'No curr
         .fd-summary { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-left: 2px solid ${theme.orange}; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: ${theme.textB}; margin-bottom: 8px; }
         .fd-summary b { color: ${theme.textH}; font-weight: 500; }
         .fd-rule { font-size: 11px; color: ${theme.textM}; margin-bottom: 12px; }
-        .fd-legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 11px; color: ${theme.textM}; align-items: center; }
-        .fd-leg-icon { width: 16px; height: 16px; vertical-align: middle; object-fit: contain; }
+        .fd-legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 12px; font-size: 12px; color: ${theme.textB}; align-items: center; }
+        .fd-legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+        .fd-leg-icon { width: 26px; height: 26px; vertical-align: middle; object-fit: contain; }
         .fd-card { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-radius: 10px; overflow: hidden; }
         .fd-wrap { overflow-x: auto; }
         .fd table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
@@ -53,7 +54,7 @@ export default function FeatherDistribution({ bidders = [], emptyText = 'No curr
         .fd-lnd { color: #85b7eb; font-weight: 500; }
         .fd-tns { color: #4ade80; font-weight: 500; }
         .fd-cell-empty { color: ${theme.bgSurf}; }
-        .fd-icon { width: 16px; height: 16px; vertical-align: middle; margin-right: 5px; object-fit: contain; }
+        .fd-icon { width: 24px; height: 24px; vertical-align: middle; margin-right: 7px; object-fit: contain; }
         .fd-foot { font-size: 10px; color: ${theme.textM}; padding: 8px 12px; border-top: 0.5px solid ${theme.border}; }
         .fd-empty { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-radius: 10px; padding: 18px 20px; text-align: center; color: ${theme.textM}; font-size: 13px; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; }
         .fd-head { font-size: 13px; font-weight: 500; color: ${theme.gold}; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
@@ -79,7 +80,7 @@ export default function FeatherDistribution({ bidders = [], emptyText = 'No curr
                 <thead>
                   <tr>
                     <th className="fd-slot">Slot</th>
-                    {pages.map((_, pi) => <th key={pi}>Pg {pi + 1}</th>)}
+                    {pages.map((_, pi) => <th key={pi}>Page {pi + 1}</th>)}
                   </tr>
                 </thead>
                 <tbody>
