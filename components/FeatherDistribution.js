@@ -27,7 +27,7 @@ function chunkPages(slots) {
 
 // Renders the feather slot grid when a distribution is active, or an
 // empty banner when not. `emptyText` customizes the inactive message.
-export default function FeatherDistribution({ bidders = [], emptyText = 'No current active bidding' }) {
+export default function FeatherDistribution({ bidders = [], emptyText = 'No current active bidding', title = '' }) {
   const slots = useMemo(() => buildSlots(bidders), [bidders])
   const pages = useMemo(() => chunkPages(slots), [slots])
   const lndCount = slots.filter(s => s.type === 'LND').length
@@ -45,7 +45,12 @@ export default function FeatherDistribution({ bidders = [], emptyText = 'No curr
         .fd-legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
         .fd-leg-icon { width: 26px; height: 26px; vertical-align: middle; object-fit: contain; }
         .fd-card { background: ${theme.bgCard}; border: 0.5px solid ${theme.border}; border-radius: 10px; overflow: hidden; }
-        .fd-wrap { overflow-x: auto; }
+        .fd-title { font-size: 13px; font-weight: 600; color: ${theme.textH}; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .fd-wrap { overflow-x: auto; scrollbar-width: auto; scrollbar-color: ${theme.gold} ${theme.bgSurf}; }
+        .fd-wrap::-webkit-scrollbar { height: 14px; }
+        .fd-wrap::-webkit-scrollbar-track { background: ${theme.bgSurf}; border-radius: 7px; }
+        .fd-wrap::-webkit-scrollbar-thumb { background: ${theme.gold}; border-radius: 7px; border: 3px solid ${theme.bgSurf}; }
+        .fd-wrap::-webkit-scrollbar-thumb:hover { background: ${theme.orange}; }
         .fd table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
         .fd th, .fd td { padding: 8px 12px; border-bottom: 0.5px solid ${theme.bgPage}; border-right: 0.5px solid ${theme.bgPage}; text-align: center; }
         .fd th { font-size: 11px; color: ${theme.gold}; font-weight: 500; background: #f5c51820; }
@@ -61,11 +66,17 @@ export default function FeatherDistribution({ bidders = [], emptyText = 'No curr
         .fd-live { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; display: inline-block; }
       `}</style>
 
+      {title && (
+        <div className="fd-title">
+          {active && <span className="fd-live" />}
+          {title}
+        </div>
+      )}
+
       {!active ? (
         <div className="fd-empty">{emptyText}</div>
       ) : (
         <>
-          <div className="fd-head"><span className="fd-live" /> Active feather distribution</div>
           <div className="fd-summary">
             <b>{lndCount} LND</b> + <b>{tnsCount} TNS</b> = <b>{slots.length} slots</b> → <b>{pages.length} pages</b> · {bidders.length} bidders
           </div>

@@ -34,7 +34,7 @@ function timeAgo(dateStr) {
   return `${days} days ago`
 }
 
-export default function Leaderboard({ members, user, lastUpdated, bidders }) {
+export default function Leaderboard({ members, user, lastUpdated, bidders, prizeBidders }) {
   const [activeStat, setActiveStat] = useState('cp')
   const [search, setSearch] = useState('')
 
@@ -84,7 +84,8 @@ export default function Leaderboard({ members, user, lastUpdated, bidders }) {
         .rank-num { color: ${theme.textM}; }
       `}</style>
 
-      <FeatherDistribution bidders={bidders} emptyText="No current active bidding" />
+      <FeatherDistribution title="Guild League › Feathers" bidders={bidders} emptyText="No current active bidding" />
+      <FeatherDistribution title="League Prize › Feathers" bidders={prizeBidders} emptyText="No current active bidding" />
 
       <h1 className="page-title">Leaderboard</h1>
       <p className="page-sub">Power stats rankings — all members</p>
@@ -179,12 +180,17 @@ export async function getServerSideProps({ req, res }) {
   const session = await getSession(req, res)
   if (!session.user) return { redirect: { destination: '/login', permanent: false } }
 
-  const [members, bidders] = await Promise.all([getLeaderboard(), getFeatherBidders()])
+  const [members, bidders, prizeBidders] = await Promise.all([
+    getLeaderboard(),
+    getFeatherBidders('FeatherDistribution'),
+    getFeatherBidders('LeaguePrizeFeathers'),
+  ])
   return {
     props: {
       user: session.user,
       members,
       bidders,
+      prizeBidders,
       lastUpdated: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
     }
   }

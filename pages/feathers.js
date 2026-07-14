@@ -4,7 +4,7 @@ import { getSession } from '../lib/auth'
 import { getFeatherBidders } from '../lib/sheets'
 import { theme } from '../lib/styles'
 
-export default function Feathers({ user, bidders, lastUpdated }) {
+export default function Feathers({ user, bidders, prizeBidders, lastUpdated }) {
   return (
     <Layout user={user}>
       <style>{`
@@ -16,10 +16,8 @@ export default function Feathers({ user, bidders, lastUpdated }) {
       <h1 className="page-title">Feather distribution</h1>
       <p className="page-sub">Combined LND + TNS slot allocation</p>
 
-      <FeatherDistribution
-        bidders={bidders}
-        emptyText="No current active bidding"
-      />
+      <FeatherDistribution title="Guild League › Feathers" bidders={bidders} emptyText="No current active bidding" />
+      <FeatherDistribution title="League Prize › Feathers" bidders={prizeBidders} emptyText="No current active bidding" />
 
       <p className="foot">Last updated: {lastUpdated}</p>
     </Layout>
@@ -30,11 +28,15 @@ export async function getServerSideProps({ req, res }) {
   const session = await getSession(req, res)
   if (!session.user) return { redirect: { destination: '/login', permanent: false } }
 
-  const bidders = await getFeatherBidders()
+  const [bidders, prizeBidders] = await Promise.all([
+    getFeatherBidders('FeatherDistribution'),
+    getFeatherBidders('LeaguePrizeFeathers'),
+  ])
   return {
     props: {
       user: session.user,
       bidders,
+      prizeBidders,
       lastUpdated: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
     },
   }
